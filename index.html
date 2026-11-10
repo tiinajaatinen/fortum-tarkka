@@ -53,7 +53,7 @@ h1{
 }
 
 .day-header{
-    font-size:1.2em;
+    font-size:1.1em;
     font-weight:bold;
     margin-top:15px;
     margin-bottom:5px;
@@ -111,37 +111,54 @@ async function loadPrices(){
 
     const nowDate = new Date();
     const currentHour = nowDate.getHours();
-    const currentDay = nowDate.getDate();
 
-    const now =
-        prices.find(
+    const orderedPrices = [
+        ...prices.filter(
             p =>
-            p.hour === currentHour &&
-            p.date.getDate() === currentDay
-        ) || prices[0];
+            p.date.toDateString() === nowDate.toDateString() &&
+            p.hour >= currentHour
+        ),
+        ...prices.filter(
+            p =>
+            p.date > nowDate &&
+            p.date.toDateString() !== nowDate.toDateString()
+        ),
+        ...prices.filter(
+            p =>
+            p.date.toDateString() === nowDate.toDateString() &&
+            p.hour < currentHour
+        )
+    ];
+
+    const now = orderedPrices[0];
 
     let best3 = {
-        start: 0,
-        end: 0,
-        avg: 999,
-        date: null
+        start:0,
+        end:0,
+        avg:999,
+        date:null
     };
 
-    for(let i = 0; i < prices.length - 2; i++){
+    for(let i=0; i<orderedPrices.length-2; i++){
 
         const avg =
-            (prices[i].price +
-             prices[i + 1].price +
-             prices[i + 2].price) / 3;
+            (orderedPrices[i].price +
+             orderedPrices[i+1].price +
+             orderedPrices[i+2].price) / 3;
 
         if(avg < best3.avg){
 
             best3.avg = avg;
-            best3.start = prices[i].hour;
-            best3.end = prices[i + 2].hour + 1;
-            best3.date = prices[i].date;
+            best3.start = orderedPrices[i].hour;
+            best3.end = orderedPrices[i+2].hour + 1;
+            best3.date = orderedPrices[i].date;
         }
     }
+
+    const best3Label =
+        best3.date.toDateString() === nowDate.toDateString()
+            ? "Tänään"
+            : "Huomenna";
 
     let traffic = "🔴 Kallista";
 
@@ -149,23 +166,6 @@ async function loadPrices(){
         traffic = "🟢 Halpaa";
     else if(now.price < 10)
         traffic = "🟡 Normaalia";
-
-    const orderedPrices = [
-        ...prices.filter(
-            p =>
-            p.date.getDate() === currentDay &&
-            p.hour >= currentHour
-        ),
-        ...prices.filter(
-            p =>
-            p.date.getDate() > currentDay
-        ),
-        ...prices.filter(
-            p =>
-            p.date.getDate() === currentDay &&
-            p.hour < currentHour
-        )
-    ];
 
     document.getElementById("summary").innerHTML = `
 
@@ -182,14 +182,17 @@ async function loadPrices(){
             ✅ Paras 3 tunnin pesujakso:
         </p>
 
-        <h2>
-            ${best3.date.getDate()}.
-            ${best3.date.getMonth() + 1}.
-            ${best3.date.getFullYear()}
-            &nbsp;
-            ${String(best3.start).padStart(2,"0")}:00 -
-            ${String(best3.end % 24).padStart(2,"0")}:00
-        </h2>
+        <p>
+            <b>
+                ${best3Label}
+                ${best3.date.getDate()}.
+                ${best3.date.getMonth() + 1}.
+                ${best3.date.getFullYear()}
+                <br>
+                ${String(best3.start).padStart(2,"0")}:00 -
+                ${String(best3.end % 24).padStart(2,"0")}:00
+            </b>
+        </p>
 
         <p>
             Keskimääräinen hinta:
@@ -202,24 +205,23 @@ async function loadPrices(){
         </p>
     `;
 
-    const hours =
-        document.getElementById("hours");
+    const hours = document.getElementById("hours");
 
     hours.innerHTML = "";
 
-    let lastDayLabel = "";
+    let lastDate = "";
 
     orderedPrices.forEach(p => {
 
-        const isToday =
-            p.date.getDate() === currentDay;
+        const thisDate =
+            `${p.date.getDate()}-${p.date.getMonth()}-${p.date.getFullYear()}`;
 
-        const dayLabel =
-            isToday
-                ? `Tänään ${p.date.getDate()}.${p.date.getMonth() + 1}.${p.date.getFullYear()}`
-                : `Huomenna ${p.date.getDate()}.${p.date.getMonth() + 1}.${p.date.getFullYear()}`;
+        if(thisDate !== lastDate){
 
-        if(dayLabel !== lastDayLabel){
+            const dayLabel =
+                p.date.toDateString() === nowDate.toDateString()
+                ? `Tänään ${p.date.getDate()}.${p.date.getMonth()+1}.${p.date.getFullYear()}`
+                : `Huomenna ${p.date.getDate()}.${p.date.getMonth()+1}.${p.date.getFullYear()}`;
 
             hours.innerHTML += `
                 <div class="day-header">
@@ -227,11 +229,11 @@ async function loadPrices(){
                 </div>
             `;
 
-            lastDayLabel = dayLabel;
+            lastDate = thisDate;
         }
 
         const marker =
-            isToday &&
+            p.date.toDateString() === nowDate.toDateString() &&
             p.hour === currentHour
                 ? "👉 NYT "
                 : "";
@@ -240,8 +242,7 @@ async function loadPrices(){
             <div class="hour ${colorClass(p.price)}">
                 ${marker}
                 ${String(p.hour).padStart(2,"0")}:00
-                - ${p.price.toFixed(2)}
-                snt/kWh
+                - ${p.price.toFixed(2)} snt/kWh
             </div>
         `;
     });
