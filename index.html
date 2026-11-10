@@ -64,8 +64,11 @@ async function loadPrices() {
 
     try {
 
-        const response = await fetch(
-          'http' + 's://api.allorigins.win/raw?url=https://api.porssisahko.net/v1/latest-prices.json'
+        const url =
+        'https://api.allorigins.win/raw?url=' +
+        encodeURIComponent('https://api.porssisahko.net/v1/latest-prices.json');
+
+    const response = await fetch(url);
         );
 
         const data = await response.json();
