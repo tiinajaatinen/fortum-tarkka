@@ -101,6 +101,11 @@ async function loadPrices(){
     const now =
         prices.find(p => p.hour === currentHour) || prices[0];
 
+    const orderedPrices = [
+        ...prices.filter(p => p.hour >= currentHour),
+        ...prices.filter(p => p.hour < currentHour)
+    ];
+
     let best3 = {
         start: 0,
         avg: 999
@@ -164,7 +169,7 @@ async function loadPrices(){
 
     hours.innerHTML = "";
 
-    prices.forEach(p => {
+    orderedPrices.forEach(p => {
 
         const marker =
             p.hour === currentHour
