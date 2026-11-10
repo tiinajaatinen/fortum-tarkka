@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>Perheen sähkönkäyttö</title>
+<title>Sähkönkäyttö</title>
 
 <style>
 
@@ -14,6 +14,10 @@ body{
     margin:auto;
     padding:20px;
     background:#f2f2f2;
+}
+
+h1{
+    text-align:center;
 }
 
 .card{
@@ -28,23 +32,12 @@ body{
     font-weight:bold;
 }
 
-.green{
-    color:#2e7d32;
-}
-
-.yellow{
-    color:#f9a825;
-}
-
-.red{
-    color:#c62828;
-}
-
 .hour{
     padding:8px;
     margin:4px 0;
     border-radius:6px;
     color:white;
+    font-weight:bold;
 }
 
 .bg-green{
@@ -64,7 +57,7 @@ body{
 
 <body>
 
-<h1>⚡ Perheen sähkönkäyttö</h1>
+<h1>⚡ Sähkönkäyttö</h1>
 
 <div id="summary" class="card">
 Ladataan...
@@ -91,40 +84,34 @@ function colorClass(price){
 
 async function loadPrices(){
 
-    const response =
-        await fetch("/api/prices");
-
-    const data =
-        await response.json();
+    const response = await fetch("/api/prices");
+    const data = await response.json();
 
     const prices =
         data.prices
             .slice(0,24)
             .reverse()
             .map(p => ({
-
-                hour:
-                  new Date(p.startDate).getHours(),
-
-                price:
-                  (p.price + MARGIN) * VAT
-
+                hour: new Date(p.startDate).getHours(),
+                price: (p.price + MARGIN) * VAT
             }));
 
+    const currentHour = new Date().getHours();
+
     const now =
-        prices[new Date().getHours()];
+        prices.find(p => p.hour === currentHour) || prices[0];
 
     let best3 = {
-        start:0,
-        avg:999
+        start: 0,
+        avg: 999
     };
 
-    for(let i=0;i<prices.length-2;i++){
+    for(let i = 0; i < prices.length - 2; i++){
 
         const avg =
             (prices[i].price +
-             prices[i+1].price +
-             prices[i+2].price) / 3;
+             prices[i + 1].price +
+             prices[i + 2].price) / 3;
 
         if(avg < best3.avg){
 
@@ -133,50 +120,66 @@ async function loadPrices(){
         }
     }
 
-    let traffic =
-      "🔴 Kallista";
+    let traffic = "🔴 Kallista";
 
     if(now.price < 5)
-      traffic = "🟢 Halpaa";
+        traffic = "🟢 Halpaa";
 
     else if(now.price < 10)
-      traffic = "🟡 Normaalia";
+        traffic = "🟡 Normaalia";
 
     document.getElementById("summary").innerHTML = `
-        <div class="big">${traffic}</div>
+
+        <div class="big">
+            ${traffic}
+        </div>
 
         <p>
-        Nykyinen hinta:
-        ${now.price.toFixed(2)}
-        snt/kWh
+            Nykyinen hinta:
+            <b>${now.price.toFixed(2)} snt/kWh</b>
         </p>
 
         <p>
-        ✅ Paras pesuaika:
-        <b>${String(best3.start).padStart(2,"0")}:00 -
-        ${String((best3.start+3)%24).padStart(2,"0")}:00</b>
+            ✅ Paras 3 tunnin pesujakso:
+        </p>
+
+        <h2>
+            ${String(best3.start).padStart(2,"0")}:00 -
+            ${String((best3.start + 3) % 24).padStart(2,"0")}:00
+        </h2>
+
+        <p>
+            Keskimääräinen hinta:
+            <b>${best3.avg.toFixed(2)} snt/kWh</b>
         </p>
 
         <p>
-        Astianpesukone ✅<br>
-        Pyykinpesukone ✅
+            Astianpesukone ✅<br>
+            Pyykinpesukone ✅
         </p>
     `;
 
     const hours =
-      document.getElementById("hours");
+        document.getElementById("hours");
+
+    hours.innerHTML = "";
 
     prices.forEach(p => {
 
+        const marker =
+            p.hour === currentHour
+                ? "👉 NYT "
+                : "";
+
         hours.innerHTML += `
             <div class="hour ${colorClass(p.price)}">
+                ${marker}
                 ${String(p.hour).padStart(2,"0")}:00
                 - ${p.price.toFixed(2)}
                 snt/kWh
             </div>
         `;
     });
-
 }
 
 loadPrices();
