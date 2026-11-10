@@ -89,6 +89,37 @@ function colorClass(price){
     return "bg-red";
 }
 
+function findBest3Period(list){
+
+    if(list.length < 3)
+        return null;
+
+    let best = {
+        start: 0,
+        end: 0,
+        avg: 999,
+        date: null
+    };
+
+    for(let i = 0; i < list.length - 2; i++){
+
+        const avg =
+            (list[i].price +
+             list[i+1].price +
+             list[i+2].price) / 3;
+
+        if(avg < best.avg){
+
+            best.avg = avg;
+            best.start = list[i].hour;
+            best.end = list[i+2].hour + 1;
+            best.date = list[i].date;
+        }
+    }
+
+    return best;
+}
+
 async function loadPrices(){
 
     const response = await fetch("/api/prices");
@@ -113,52 +144,39 @@ async function loadPrices(){
     const currentHour = nowDate.getHours();
 
     const orderedPrices = [
+
         ...prices.filter(
             p =>
             p.date.toDateString() === nowDate.toDateString() &&
             p.hour >= currentHour
         ),
+
         ...prices.filter(
             p =>
-            p.date > nowDate &&
             p.date.toDateString() !== nowDate.toDateString()
-        ),
-        ...prices.filter(
-            p =>
-            p.date.toDateString() === nowDate.toDateString() &&
-            p.hour < currentHour
         )
+
     ];
 
     const now = orderedPrices[0];
 
-    let best3 = {
-        start:0,
-        end:0,
-        avg:999,
-        date:null
-    };
+    const todayPrices =
+        orderedPrices.filter(
+            p =>
+            p.date.toDateString() === nowDate.toDateString()
+        );
 
-    for(let i=0; i<orderedPrices.length-2; i++){
+    const tomorrowPrices =
+        orderedPrices.filter(
+            p =>
+            p.date.toDateString() !== nowDate.toDateString()
+        );
 
-        const avg =
-            (orderedPrices[i].price +
-             orderedPrices[i+1].price +
-             orderedPrices[i+2].price) / 3;
+    const bestToday =
+        findBest3Period(todayPrices);
 
-        if(avg < best3.avg){
-
-            best3.avg = avg;
-            best3.start = orderedPrices[i].hour;
-            best3.end = orderedPrices[i+2].hour + 1;
-            best3.date = orderedPrices[i].date;
-        }
-    }
-
-    const best3Label =
-        best3.date.toDateString() === nowDate.toDateString()
-            ? "Tänään"
-            : "Huomenna";
+    const bestTomorrow =
+        findBest3Period(tomorrowPrices);
 
     let traffic = "🔴 Kallista";
 
@@ -178,26 +196,55 @@ async function loadPrices(){
             <b>${now.price.toFixed(2)} snt/kWh</b>
         </p>
 
+        ${
+        bestToday ? `
         <p>
-            ✅ Paras 3 tunnin pesujakso:
+            ✅ Paras 3 tunnin pesujakso tänään:
         </p>
 
         <p>
             <b>
-                ${best3Label}
-                ${best3.date.getDate()}.
-                ${best3.date.getMonth() + 1}.
-                ${best3.date.getFullYear()}
+                Tänään
+                ${bestToday.date.getDate()}.
+                ${bestToday.date.getMonth()+1}.
+                ${bestToday.date.getFullYear()}
                 <br>
-                ${String(best3.start).padStart(2,"0")}:00 -
-                ${String(best3.end % 24).padStart(2,"0")}:00
+                ${String(bestToday.start).padStart(2,"0")}:00 -
+                ${String(bestToday.end % 24).padStart(2,"0")}:00
             </b>
         </p>
 
         <p>
             Keskimääräinen hinta:
-            <b>${best3.avg.toFixed(2)} snt/kWh</b>
+            <b>${bestToday.avg.toFixed(2)} snt/kWh</b>
         </p>
+        ` : ''
+        }
+
+        ${
+        bestTomorrow ? `
+        <p>
+            ✅ Paras 3 tunnin pesujakso huomenna:
+        </p>
+
+        <p>
+            <b>
+                Huomenna
+                ${bestTomorrow.date.getDate()}.
+                ${bestTomorrow.date.getMonth()+1}.
+                ${bestTomorrow.date.getFullYear()}
+                <br>
+                ${String(bestTomorrow.start).padStart(2,"0")}:00 -
+                ${String(bestTomorrow.end % 24).padStart(2,"0")}:00
+            </b>
+        </p>
+
+        <p>
+            Keskimääräinen hinta:
+            <b>${bestTomorrow.avg.toFixed(2)} snt/kWh</b>
+        </p>
+        ` : ''
+        }
 
         <p>
             Astianpesukone ✅<br>
@@ -218,8 +265,11 @@ async function loadPrices(){
 
         if(thisDate !== lastDate){
 
+            const isToday =
+                p.date.toDateString() === nowDate.toDateString();
+
             const dayLabel =
-                p.date.toDateString() === nowDate.toDateString()
+                isToday
                 ? `Tänään ${p.date.getDate()}.${p.date.getMonth()+1}.${p.date.getFullYear()}`
                 : `Huomenna ${p.date.getDate()}.${p.date.getMonth()+1}.${p.date.getFullYear()}`;
 
