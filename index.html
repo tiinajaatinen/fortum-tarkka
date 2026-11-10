@@ -120,27 +120,26 @@ async function loadPrices(){
             p.date.getDate() === currentDay
         ) || prices[0];
 
-    const todayPrices =
-        prices.filter(
-            p => p.date.getDate() === currentDay
-        );
-
     let best3 = {
         start: 0,
-        avg: 999
+        end: 0,
+        avg: 999,
+        date: null
     };
 
-    for(let i = 0; i < todayPrices.length - 2; i++){
+    for(let i = 0; i < prices.length - 2; i++){
 
         const avg =
-            (todayPrices[i].price +
-             todayPrices[i + 1].price +
-             todayPrices[i + 2].price) / 3;
+            (prices[i].price +
+             prices[i + 1].price +
+             prices[i + 2].price) / 3;
 
         if(avg < best3.avg){
 
             best3.avg = avg;
-            best3.start = todayPrices[i].hour;
+            best3.start = prices[i].hour;
+            best3.end = prices[i + 2].hour + 1;
+            best3.date = prices[i].date;
         }
     }
 
@@ -148,7 +147,6 @@ async function loadPrices(){
 
     if(now.price < 5)
         traffic = "🟢 Halpaa";
-
     else if(now.price < 10)
         traffic = "🟡 Normaalia";
 
@@ -185,8 +183,12 @@ async function loadPrices(){
         </p>
 
         <h2>
+            ${best3.date.getDate()}.
+            ${best3.date.getMonth() + 1}.
+            ${best3.date.getFullYear()}
+            &nbsp;
             ${String(best3.start).padStart(2,"0")}:00 -
-            ${String((best3.start + 3) % 24).padStart(2,"0")}:00
+            ${String(best3.end % 24).padStart(2,"0")}:00
         </h2>
 
         <p>
@@ -214,8 +216,8 @@ async function loadPrices(){
 
         const dayLabel =
             isToday
-                ? "Tänään"
-                : "Huomenna";
+                ? `Tänään ${p.date.getDate()}.${p.date.getMonth() + 1}.${p.date.getFullYear()}`
+                : `Huomenna ${p.date.getDate()}.${p.date.getMonth() + 1}.${p.date.getFullYear()}`;
 
         if(dayLabel !== lastDayLabel){
 
