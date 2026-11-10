@@ -52,6 +52,13 @@ h1{
     background:#c62828;
 }
 
+.day-header{
+    font-size:1.2em;
+    font-weight:bold;
+    margin-top:15px;
+    margin-bottom:5px;
+}
+
 </style>
 </head>
 
@@ -89,39 +96,51 @@ async function loadPrices(){
 
     const prices =
         data.prices
-            .slice(0,24)
+            .slice()
             .reverse()
-            .map(p => ({
-                hour: new Date(p.startDate).getHours(),
-                price: (p.price + MARGIN) * VAT
-            }));
+            .map(p => {
 
-    const currentHour = new Date().getHours();
+                const d = new Date(p.startDate);
+
+                return {
+                    hour: d.getHours(),
+                    date: d,
+                    price: (p.price + MARGIN) * VAT
+                };
+            });
+
+    const nowDate = new Date();
+    const currentHour = nowDate.getHours();
+    const currentDay = nowDate.getDate();
 
     const now =
-        prices.find(p => p.hour === currentHour) || prices[0];
+        prices.find(
+            p =>
+            p.hour === currentHour &&
+            p.date.getDate() === currentDay
+        ) || prices[0];
 
-    const orderedPrices = [
-        ...prices.filter(p => p.hour >= currentHour),
-        ...prices.filter(p => p.hour < currentHour)
-    ];
+    const todayPrices =
+        prices.filter(
+            p => p.date.getDate() === currentDay
+        );
 
     let best3 = {
         start: 0,
         avg: 999
     };
 
-    for(let i = 0; i < prices.length - 2; i++){
+    for(let i = 0; i < todayPrices.length - 2; i++){
 
         const avg =
-            (prices[i].price +
-             prices[i + 1].price +
-             prices[i + 2].price) / 3;
+            (todayPrices[i].price +
+             todayPrices[i + 1].price +
+             todayPrices[i + 2].price) / 3;
 
         if(avg < best3.avg){
 
             best3.avg = avg;
-            best3.start = prices[i].hour;
+            best3.start = todayPrices[i].hour;
         }
     }
 
@@ -132,6 +151,23 @@ async function loadPrices(){
 
     else if(now.price < 10)
         traffic = "🟡 Normaalia";
+
+    const orderedPrices = [
+        ...prices.filter(
+            p =>
+            p.date.getDate() === currentDay &&
+            p.hour >= currentHour
+        ),
+        ...prices.filter(
+            p =>
+            p.date.getDate() > currentDay
+        ),
+        ...prices.filter(
+            p =>
+            p.date.getDate() === currentDay &&
+            p.hour < currentHour
+        )
+    ];
 
     document.getElementById("summary").innerHTML = `
 
@@ -169,9 +205,31 @@ async function loadPrices(){
 
     hours.innerHTML = "";
 
+    let lastDayLabel = "";
+
     orderedPrices.forEach(p => {
 
+        const isToday =
+            p.date.getDate() === currentDay;
+
+        const dayLabel =
+            isToday
+                ? "Tänään"
+                : "Huomenna";
+
+        if(dayLabel !== lastDayLabel){
+
+            hours.innerHTML += `
+                <div class="day-header">
+                    ${dayLabel}
+                </div>
+            `;
+
+            lastDayLabel = dayLabel;
+        }
+
         const marker =
+            isToday &&
             p.hour === currentHour
                 ? "👉 NYT "
                 : "";
