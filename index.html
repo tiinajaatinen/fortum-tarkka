@@ -4,150 +4,179 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>Fortum Tarkka - Sähkön hinta</title>
+<title>Perheen sähkönkäyttö</title>
 
 <style>
-body {
+
+body{
     font-family: Arial, sans-serif;
-    max-width: 800px;
-    margin: auto;
-    padding: 20px;
-    background: #f4f4f4;
+    max-width:700px;
+    margin:auto;
+    padding:20px;
+    background:#f2f2f2;
 }
 
-h1 {
-    text-align: center;
+.card{
+    background:white;
+    border-radius:12px;
+    padding:15px;
+    margin-bottom:15px;
 }
 
-.card {
-    background: white;
-    padding: 15px;
-    border-radius: 10px;
-    margin-bottom: 15px;
+.big{
+    font-size:1.4em;
+    font-weight:bold;
 }
 
-.hour {
-    padding: 10px;
-    margin: 4px 0;
-    color: white;
-    border-radius: 8px;
-    font-weight: bold;
+.green{
+    color:#2e7d32;
 }
 
-.green { background: #2e7d32; }
-.yellow { background: #f9a825; }
-.red { background: #c62828; }
-
-.big {
-    font-size: 1.3em;
-    font-weight: bold;
+.yellow{
+    color:#f9a825;
 }
+
+.red{
+    color:#c62828;
+}
+
+.hour{
+    padding:8px;
+    margin:4px 0;
+    border-radius:6px;
+    color:white;
+}
+
+.bg-green{
+    background:#2e7d32;
+}
+
+.bg-yellow{
+    background:#f9a825;
+}
+
+.bg-red{
+    background:#c62828;
+}
+
 </style>
-
 </head>
+
 <body>
 
-<h1>⚡ Fortum Tarkka</h1>
+<h1>⚡ Perheen sähkönkäyttö</h1>
 
-<div id="status" class="card">
-Ladataan sähkön hintoja...
+<div id="summary" class="card">
+Ladataan...
 </div>
 
-<div id="hours"></div>
+<div id="hours" class="card">
+</div>
 
 <script>
 
-const MARGIN = 0.45;
+const MARGIN = 0.59;
 const VAT = 1.255;
 
-async function loadPrices() {
+function colorClass(price){
 
-    try {
+    if(price < 5)
+        return "bg-green";
 
-        const url =
-        'https://api.allorigins.win/raw?url=' +
-        encodeURIComponent('https://api.porssisahko.net/v1/latest-prices.json');
+    if(price < 10)
+        return "bg-yellow";
 
-    const response = await fetch(url);
-        );
+    return "bg-red";
+}
 
-        const data = await response.json();
+async function loadPrices(){
 
-        const prices = data.prices
+    const response =
+        await fetch("/api/prices");
+
+    const data =
+        await response.json();
+
+    const prices =
+        data.prices
             .slice(0,24)
             .reverse()
             .map(p => ({
-                hour: new Date(p.startDate).getHours(),
-                price: (p.price + MARGIN) * VAT
+
+                hour:
+                  new Date(p.startDate).getHours(),
+
+                price:
+                  (p.price + MARGIN) * VAT
+
             }));
 
-        const cheapest =
-            [...prices].sort((a,b)=>a.price-b.price)[0];
+    const now =
+        prices[new Date().getHours()];
 
-        let best3h = {
-            start: 0,
-            avg: 999
-        };
+    let best3 = {
+        start:0,
+        avg:999
+    };
 
-        for(let i=0; i<prices.length-2; i++) {
+    for(let i=0;i<prices.length-2;i++){
 
-            const avg =
+        const avg =
             (prices[i].price +
              prices[i+1].price +
              prices[i+2].price) / 3;
 
-            if(avg < best3h.avg) {
-                best3h.avg = avg;
-                best3h.start = prices[i].hour;
-            }
+        if(avg < best3.avg){
+
+            best3.avg = avg;
+            best3.start = prices[i].hour;
         }
-
-        document.getElementById("status").innerHTML = `
-            <div class="big">
-              ✅ Halvin tunti:
-              ${String(cheapest.hour).padStart(2,"0")}:00
-              (${cheapest.price.toFixed(2)} snt/kWh)
-            </div>
-
-            <br>
-
-            <div class="big">
-              ✅ Paras 3 tunnin jakso:
-              ${String(best3h.start).padStart(2,"0")}:00 -
-              ${String((best3h.start+3)%24).padStart(2,"0")}:00
-            </div>
-        `;
-
-        const hours = document.getElementById("hours");
-        hours.innerHTML = "";
-
-        prices.forEach(p => {
-
-            let color = "green";
-
-            if(p.price >= 5)
-                color = "yellow";
-
-            if(p.price >= 10)
-                color = "red";
-
-            hours.innerHTML += `
-                <div class="hour ${color}">
-                    ${String(p.hour).padStart(2,"0")}:00
-                    - ${p.price.toFixed(2)} snt/kWh
-                </div>
-            `;
-        });
-
-    } catch(error) {
-
-        document.getElementById("status").innerHTML = `
-            <b>Hintojen lataus epäonnistui.</b><br><br>
-            Päivitä sivu muutaman minuutin kuluttua.
-        `;
-
-        console.error(error);
     }
+
+    let traffic =
+      "🔴 Kallista";
+
+    if(now.price < 5)
+      traffic = "🟢 Halpaa";
+
+    else if(now.price < 10)
+      traffic = "🟡 Normaalia";
+
+    document.getElementById("summary").innerHTML = `
+        <div class="big">${traffic}</div>
+
+        <p>
+        Nykyinen hinta:
+        ${now.price.toFixed(2)}
+        snt/kWh
+        </p>
+
+        <p>
+        ✅ Paras pesuaika:
+        <b>${String(best3.start).padStart(2,"0")}:00 -
+        ${String((best3.start+3)%24).padStart(2,"0")}:00</b>
+        </p>
+
+        <p>
+        Astianpesukone ✅<br>
+        Pyykinpesukone ✅
+        </p>
+    `;
+
+    const hours =
+      document.getElementById("hours");
+
+    prices.forEach(p => {
+
+        hours.innerHTML += `
+            <div class="hour ${colorClass(p.price)}">
+                ${String(p.hour).padStart(2,"0")}:00
+                - ${p.price.toFixed(2)}
+                snt/kWh
+            </div>
+        `;
+    });
+
 }
 
 loadPrices();
