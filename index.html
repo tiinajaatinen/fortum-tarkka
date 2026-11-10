@@ -7,7 +7,6 @@
 <title>Sähkönkäyttö</title>
 
 <style>
-
 body{
     font-family: Arial, sans-serif;
     max-width:700px;
@@ -58,7 +57,6 @@ h1{
     margin-top:15px;
     margin-bottom:5px;
 }
-
 </style>
 </head>
 
@@ -95,13 +93,13 @@ function findBest3Period(list){
         return null;
 
     let best = {
-        start: 0,
-        end: 0,
-        avg: 999,
-        date: null
+        start:0,
+        end:0,
+        avg:999,
+        date:null
     };
 
-    for(let i = 0; i < list.length - 2; i++){
+    for(let i=0;i<list.length-2;i++){
 
         const avg =
             (list[i].price +
@@ -143,34 +141,28 @@ async function loadPrices(){
     const nowDate = new Date();
     const currentHour = nowDate.getHours();
 
-    const orderedPrices = [
+    const tomorrowDate = new Date(nowDate);
+    tomorrowDate.setDate(nowDate.getDate() + 1);
 
-        ...prices.filter(
+    const todayPrices =
+        prices.filter(
             p =>
             p.date.toDateString() === nowDate.toDateString() &&
             p.hour >= currentHour
-        ),
-
-        ...prices.filter(
-            p =>
-            p.date.toDateString() !== nowDate.toDateString()
-        )
-
-    ];
-
-    const now = orderedPrices[0];
-
-    const todayPrices =
-        orderedPrices.filter(
-            p =>
-            p.date.toDateString() === nowDate.toDateString()
         );
 
     const tomorrowPrices =
-        orderedPrices.filter(
+        prices.filter(
             p =>
-            p.date.toDateString() !== nowDate.toDateString()
+            p.date.toDateString() === tomorrowDate.toDateString()
         );
+
+    const orderedPrices = [
+        ...todayPrices,
+        ...tomorrowPrices
+    ];
+
+    const now = orderedPrices[0];
 
     const bestToday =
         findBest3Period(todayPrices);
@@ -198,24 +190,20 @@ async function loadPrices(){
 
         ${
         bestToday ? `
-        <p>
-            ✅ Paras 3 tunnin pesujakso tänään:
-        </p>
+        <p><b>✅ Paras 3 tunnin pesujakso tänään</b></p>
 
         <p>
+            Tänään
+            ${bestToday.date.getDate()}.
+            ${bestToday.date.getMonth()+1}.
+            ${bestToday.date.getFullYear()}
+            <br>
             <b>
-                Tänään
-                ${bestToday.date.getDate()}.
-                ${bestToday.date.getMonth()+1}.
-                ${bestToday.date.getFullYear()}
-                <br>
-                ${String(bestToday.start).padStart(2,"0")}:00 -
-                ${String(bestToday.end % 24).padStart(2,"0")}:00
+            ${String(bestToday.start).padStart(2,"0")}:00 -
+            ${String(bestToday.end % 24).padStart(2,"0")}:00
             </b>
-        </p>
-
-        <p>
-            Keskimääräinen hinta:
+            <br>
+            Keskimäärin
             <b>${bestToday.avg.toFixed(2)} snt/kWh</b>
         </p>
         ` : ''
@@ -223,24 +211,20 @@ async function loadPrices(){
 
         ${
         bestTomorrow ? `
-        <p>
-            ✅ Paras 3 tunnin pesujakso huomenna:
-        </p>
+        <p><b>✅ Paras 3 tunnin pesujakso huomenna</b></p>
 
         <p>
+            Huomenna
+            ${bestTomorrow.date.getDate()}.
+            ${bestTomorrow.date.getMonth()+1}.
+            ${bestTomorrow.date.getFullYear()}
+            <br>
             <b>
-                Huomenna
-                ${bestTomorrow.date.getDate()}.
-                ${bestTomorrow.date.getMonth()+1}.
-                ${bestTomorrow.date.getFullYear()}
-                <br>
-                ${String(bestTomorrow.start).padStart(2,"0")}:00 -
-                ${String(bestTomorrow.end % 24).padStart(2,"0")}:00
+            ${String(bestTomorrow.start).padStart(2,"0")}:00 -
+            ${String(bestTomorrow.end % 24).padStart(2,"0")}:00
             </b>
-        </p>
-
-        <p>
-            Keskimääräinen hinta:
+            <br>
+            Keskimäärin
             <b>${bestTomorrow.avg.toFixed(2)} snt/kWh</b>
         </p>
         ` : ''
@@ -253,49 +237,51 @@ async function loadPrices(){
     `;
 
     const hours = document.getElementById("hours");
-
     hours.innerHTML = "";
 
-    let lastDate = "";
-
-    orderedPrices.forEach(p => {
-
-        const thisDate =
-            `${p.date.getDate()}-${p.date.getMonth()}-${p.date.getFullYear()}`;
-
-        if(thisDate !== lastDate){
-
-            const isToday =
-                p.date.toDateString() === nowDate.toDateString();
-
-            const dayLabel =
-                isToday
-                ? `Tänään ${p.date.getDate()}.${p.date.getMonth()+1}.${p.date.getFullYear()}`
-                : `Huomenna ${p.date.getDate()}.${p.date.getMonth()+1}.${p.date.getFullYear()}`;
-
-            hours.innerHTML += `
-                <div class="day-header">
-                    ${dayLabel}
-                </div>
-            `;
-
-            lastDate = thisDate;
-        }
-
-        const marker =
-            p.date.toDateString() === nowDate.toDateString() &&
-            p.hour === currentHour
-                ? "👉 NYT "
-                : "";
+    if(todayPrices.length > 0){
 
         hours.innerHTML += `
-            <div class="hour ${colorClass(p.price)}">
-                ${marker}
-                ${String(p.hour).padStart(2,"0")}:00
-                - ${p.price.toFixed(2)} snt/kWh
+            <div class="day-header">
+                Tänään ${nowDate.getDate()}.${nowDate.getMonth()+1}.${nowDate.getFullYear()}
             </div>
         `;
-    });
+
+        todayPrices.forEach(p => {
+
+            const marker =
+                p.hour === currentHour
+                    ? "👉 NYT "
+                    : "";
+
+            hours.innerHTML += `
+                <div class="hour ${colorClass(p.price)}">
+                    ${marker}
+                    ${String(p.hour).padStart(2,"0")}:00
+                    - ${p.price.toFixed(2)} snt/kWh
+                </div>
+            `;
+        });
+    }
+
+    if(tomorrowPrices.length > 0){
+
+        hours.innerHTML += `
+            <div class="day-header">
+                Huomenna ${tomorrowDate.getDate()}.${tomorrowDate.getMonth()+1}.${tomorrowDate.getFullYear()}
+            </div>
+        `;
+
+        tomorrowPrices.forEach(p => {
+
+            hours.innerHTML += `
+                <div class="hour ${colorClass(p.price)}">
+                    ${String(p.hour).padStart(2,"0")}:00
+                    - ${p.price.toFixed(2)} snt/kWh
+                </div>
+            `;
+        });
+    }
 }
 
 loadPrices();
